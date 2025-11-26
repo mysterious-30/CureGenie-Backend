@@ -16,18 +16,18 @@ pip install fastapi uvicorn pillow numpy pyzbar supabase
 **For local access only:**
 ```bash
 # From the Backend directory
-uvicorn api_service:app --reload --port 8000
+uvicorn app:app --reload --port 8000
 ```
 
 **For network access (to use from phone):**
 ```bash
-uvicorn api_service:app --reload --host 0.0.0.0 --port 8000
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Or use Python directly:
 
 ```bash
-python api_service.py
+python app.py
 ```
 
 The service will be available at:
