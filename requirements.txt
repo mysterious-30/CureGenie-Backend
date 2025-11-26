@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+numpy
+Pillow
+supabase
+pyzbar
+python-dotenv
+mangum
