@@ -1,3 +1,4 @@
+```python
 from fastapi import FastAPI, HTTPException
 from mangum import Mangum
 
@@ -165,3 +166,4 @@ async def update_language(request: LanguageUpdateRequest):
         return {"success": False, "error": str(e)}
 
 handler = Mangum(app)
+```
