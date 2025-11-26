@@ -164,6 +164,10 @@ async def update_language(request: LanguageUpdateRequest):
         print(f"Error updating language: {e}")
         return {"success": False, "error": str(e)}
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "Service is running"}
+
 handler = Mangum(app)
 
 if __name__ == "__main__":
