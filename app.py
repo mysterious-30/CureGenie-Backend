@@ -7,19 +7,40 @@ import numpy as np
 from PIL import Image
 import io
 import os
+from typing import Optional
 from supabase import create_client, Client
-from pyzbar.pyzbar import decode
 from dotenv import load_dotenv
 
 load_dotenv()
 
-url: str = os.getenv("SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY")
+try:
+    from pyzbar.pyzbar import decode as zbar_decode
+    _pyzbar_error = None
+except Exception as exc:  # pragma: no cover - platform specific
+    zbar_decode = None
+    _pyzbar_error = exc
 
-if not url or not key:
-    raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
 
-supabase: Client = create_client(url, key)
+def get_supabase_client() -> Client:
+    """
+    Lazily instantiate the Supabase client so startup does not crash if env vars
+    are missing. This keeps the /health endpoint alive and surfaces a clearer
+    error once the database is actually needed.
+    """
+    url: str = os.getenv("SUPABASE_URL")
+    key: str = os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        raise RuntimeError(
+            "SUPABASE_URL and SUPABASE_KEY must be set in environment variables"
+        )
+
+    global _supabase_client
+    if "_supabase_client" not in globals() or _supabase_client is None:
+        _supabase_client = create_client(url, key)
+    return _supabase_client
+
+
+supabase: Optional[Client] = None
 
 app = FastAPI()
 
@@ -32,6 +53,11 @@ class LanguageUpdateRequest(BaseModel):
     language: str
 
 def read_barcode(image):
+    if not zbar_decode:
+        raise RuntimeError(
+            "pyzbar/zbar is not available on the current platform, unable to decode barcodes"
+        )
+
     if not isinstance(image, np.ndarray):
         image = np.array(image)
     
@@ -53,7 +79,7 @@ def read_barcode(image):
             pil_image = Image.fromarray(image, 'L')
     
     try:
-        decoded_objects = decode(pil_image)
+        decoded_objects = zbar_decode(pil_image)
         if decoded_objects:
             barcodes = [obj.data.decode("utf-8") for obj in decoded_objects]
             if barcodes:
@@ -63,7 +89,7 @@ def read_barcode(image):
             gray = np.dot(image[...,:3], [0.2989, 0.5870, 0.1140]).astype(np.uint8)
             pil_image = Image.fromarray(gray, 'L')
             try:
-                decoded_objects = decode(pil_image)
+                decoded_objects = zbar_decode(pil_image)
                 if decoded_objects:
                     barcodes = [obj.data.decode("utf-8") for obj in decoded_objects]
                     if barcodes:
@@ -77,6 +103,7 @@ def get_student_by_uid(uid: str):
     """
     Fetch student data by UID from Supabase.
     """
+    supabase = get_supabase_client()
     response = (
         supabase.table("Database")
         .select("*")
@@ -89,6 +116,7 @@ def update_student_language(uid: str, language: str):
     """
     Update student language preference in Supabase.
     """
+    supabase = get_supabase_client()
     response = (
         supabase.table("Database")
         .update({"Language": language})
@@ -144,6 +172,8 @@ async def get_student_profile(uid: str):
                 "fullName": student.get("Name"),
                 "number": student.get("Number"),
                 "language": student.get("Language", "English"),
+                "age": student.get("Age"),
+                "allergy": student.get("Allergy"),
                 "message": "Student found"
             }
         else:
