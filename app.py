@@ -72,7 +72,7 @@ def read_barcode(image):
     
     try:
         pil_image = Image.fromarray(image)
-    except:
+    except Exception:
         if len(image.shape) == 3:
             pil_image = Image.fromarray(image, 'RGB')
         else:
@@ -84,7 +84,7 @@ def read_barcode(image):
             barcodes = [obj.data.decode("utf-8") for obj in decoded_objects]
             if barcodes:
                 return barcodes[0]
-    except:
+    except Exception:
         if len(image.shape) == 3:
             gray = np.dot(image[...,:3], [0.2989, 0.5870, 0.1140]).astype(np.uint8)
             pil_image = Image.fromarray(gray, 'L')
@@ -94,7 +94,7 @@ def read_barcode(image):
                     barcodes = [obj.data.decode("utf-8") for obj in decoded_objects]
                     if barcodes:
                         return barcodes[0]
-            except:
+            except Exception:
                 pass
     
     return None
