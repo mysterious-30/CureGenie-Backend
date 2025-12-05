@@ -7,11 +7,19 @@ import numpy as np
 from PIL import Image
 import io
 import os
+import logging
 from typing import Optional
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 try:
     from pyzbar.pyzbar import decode as zbar_decode
@@ -156,7 +164,7 @@ async def read_barcode_endpoint(request: ImageRequest):
                 "message": "No barcode detected"
             }
     except Exception as e:
-        print(f"Error processing barcode: {e}")
+        logger.error(f"Error processing barcode: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 @app.get("/api/student-profile/{uid}")
@@ -182,7 +190,7 @@ async def get_student_profile(uid: str):
                 "message": "Student not found"
             }
     except Exception as e:
-        print(f"Error fetching profile: {e}")
+        logger.error(f"Error fetching profile: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 @app.post("/api/update-language")
@@ -191,12 +199,63 @@ async def update_language(request: LanguageUpdateRequest):
         data = update_student_language(request.uid, request.language)
         return {"success": True, "data": data}
     except Exception as e:
-        print(f"Error updating language: {e}")
+        logger.error(f"Error updating language: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "Service is running"}
+
+@app.post("/update-profile")
+async def update_profile(request: Request):
+    """Update student profile information"""
+    try:
+        data = await request.json()
+        uid = data.get("uid")
+        age = data.get("age")
+        allergy = data.get("allergy")
+        number = data.get("number")
+        
+        if not uid:
+            return JSONResponse(
+                content={"success": False, "message": "Student ID is required"},
+                status_code=400
+            )
+        
+        # Build update data
+        update_data = {}
+        if age is not None:
+            update_data["age"] = int(age)
+        if allergy is not None:
+            update_data["allergy"] = allergy if allergy.strip() else None
+        if number is not None:
+            update_data["number"] = number if number.strip() else None
+        
+        if not update_data:
+            return JSONResponse(
+                content={"success": False, "message": "No fields to update"},
+                status_code=400
+            )
+        
+        # Update in database
+        response = supabase.table("students").update(update_data).eq("uid", uid).execute()
+        
+        if response.data:
+            logging.info(f"Profile updated for UID: {uid}")
+            return JSONResponse(content={"success": True, "message": "Profile updated successfully"})
+        else:
+            logging.error(f"Failed to update profile for UID: {uid}")
+            return JSONResponse(
+                content={"success": False, "message": "Failed to update profile"},
+                status_code=500
+            )
+            
+    except Exception as e:
+        logging.error(f"Error updating profile: {str(e)}")
+        return JSONResponse(
+            content={"success": False, "message": "Internal server error"},
+            status_code=500
+        )
 
 handler = Mangum(app)
 
