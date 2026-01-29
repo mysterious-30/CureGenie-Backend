@@ -1,9 +1,8 @@
 fastapi
 uvicorn
-pydantic
-numpy
-Pillow
-supabase
-pyzbar
-python-dotenv
 mangum
+python-dotenv
+supabase
+pillow
+numpy
+pyzbar
