@@ -425,6 +425,123 @@ async def api_read_barcode(body: dict = Body(...)):
         raise HTTPException(status_code=500, detail=f"Failed to process barcode: {str(e)}")
 
 
+@app.get("/api/student-profile/{uid}")
+async def get_student_profile(uid: str):
+    """Get student profile by UID"""
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    
+    try:
+        response = supabase.table("students").select("*").eq("uid", uid).execute()
+        
+        if not response.data or len(response.data) == 0:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        student = response.data[0]
+        return {
+            "success": True,
+            "uid": student.get("uid"),
+            "firstName": student.get("first_name"),
+            "fullName": student.get("full_name"),
+            "number": student.get("number"),
+            "language": student.get("language", "english"),
+            "age": student.get("age"),
+            "allergy": student.get("allergy"),
+            "message": "Profile retrieved successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Profile fetch error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@app.post("/api/update-language")
+async def update_language(body: dict = Body(...)):
+    """Update student language preference"""
+    uid = body.get("uid")
+    language = body.get("language")
+    
+    if not uid or not language:
+        raise HTTPException(status_code=400, detail="Missing uid or language")
+    
+    if language not in ["english", "hindi"]:
+        raise HTTPException(status_code=400, detail="Invalid language. Must be 'english' or 'hindi'")
+    
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    
+    try:
+        response = supabase.table("students").update({
+            "language": language
+        }).eq("uid", uid).execute()
+        
+        if not response.data or len(response.data) == 0:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        return {
+            "success": True,
+            "message": "Language updated successfully",
+            "language": language
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Language update error: {e}")
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+
+
+@app.post("/api/update-profile")
+async def update_profile(body: dict = Body(...)):
+    """Update student profile (age, allergy, number)"""
+    uid = body.get("uid")
+    
+    if not uid:
+        raise HTTPException(status_code=400, detail="Missing uid")
+    
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    
+    # Build update dict with only provided fields
+    update_data = {}
+    if "age" in body and body["age"] is not None:
+        update_data["age"] = int(body["age"])
+    if "allergy" in body:
+        update_data["allergy"] = body["allergy"]
+    if "number" in body:
+        update_data["number"] = body["number"]
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    try:
+        response = supabase.table("students").update(update_data).eq("uid", uid).execute()
+        
+        if not response.data or len(response.data) == 0:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        return {
+            "success": True,
+            "message": "Profile updated successfully",
+            "updated_fields": list(update_data.keys())
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Profile update error: {e}")
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "CureGenie Backend V2",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 # Mount router into your app: add this after app creation in your file
 # app.include_router(router_ai)
 # ------------------ END: Cure Genie pipeline ------------------
