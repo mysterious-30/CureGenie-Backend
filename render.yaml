@@ -9,3 +9,7 @@ services:
         sync: false
       - key: SUPABASE_KEY
         sync: false
+      - key: MODEL_API_KEY
+        sync: false
+      - key: MODEL_NAME
+        value: "gpt-oss-20"

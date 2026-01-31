@@ -1,8 +1,11 @@
 fastapi
 uvicorn
-mangum
-python-dotenv
-supabase
-pillow
+pydantic
 numpy
+Pillow
+supabase
 pyzbar
+python-dotenv
+mangum
+tensorflow-cpu>=2.12.0
+httpx>=0.24.0
