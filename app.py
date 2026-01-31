@@ -54,20 +54,16 @@ async def save_analysis_full(uid: str, mode: str, language: str, keyword: str, d
         return None
 
     def _save():
+        # Match the actual Analyses table schema: UID, created_at, description, image_present, result_json
         data = {
-            "created_at": datetime.utcnow().isoformat(),
-            "uid": uid,
-            "mode": mode,
-            "language": language,
-            "keyword": keyword,
+            "UID": uid,
             "description": description,
-            "age": age,
-            "allergies": allergies or "",
             "image_present": bool(image_present),
             "result_json": result  # Supabase handles JSON/JSONB automatically
+            # Note: created_at has a default value in the database, so we don't need to set it
         }
         try:
-            response = supabase.table("analyses").insert(data).execute()
+            response = supabase.table("Analyses").insert(data).execute()
             # response.data is a list of inserted records
             if response.data and len(response.data) > 0:
                 return response.data[0].get("id")
@@ -84,19 +80,14 @@ async def fetch_analysis_by_id(an_id: int):
 
     def _fetch():
         try:
-            response = supabase.table("analyses").select("*").eq("id", an_id).limit(1).execute()
+            response = supabase.table("Analyses").select("*").eq("id", an_id).limit(1).execute()
             if response.data and len(response.data) > 0:
                 r = response.data[0]
                 return {
                     "id": r.get("id"),
                     "created_at": r.get("created_at"),
-                    "uid": r.get("uid"),
-                    "mode": r.get("mode"),
-                    "language": r.get("language"),
-                    "keyword": r.get("keyword"),
+                    "uid": r.get("UID"),
                     "description": r.get("description"),
-                    "age": r.get("age"),
-                    "allergies": r.get("allergies"),
                     "image_present": r.get("image_present"),
                     "result": r.get("result_json")
                 }
