@@ -405,10 +405,12 @@ async def api_read_barcode(body: dict = Body(...)):
         first_name = None
         if supabase:
             try:
-                # Assuming the barcode data corresponds to the 'uid' column
-                resp = supabase.table("students").select("first_name").eq("uid", barcode_data).execute()
+                # Assuming the barcode data corresponds to the 'UID' column
+                resp = supabase.table("Database").select("Name").eq("UID", barcode_data).execute()
                 if resp.data and len(resp.data) > 0:
-                    first_name = resp.data[0].get("first_name")
+                    # Extract first name from full name
+                    full_name = resp.data[0].get("Name")
+                    first_name = full_name.split()[0] if full_name else None
             except Exception as e:
                 print(f"Supabase lookup failed: {e}")
                 
@@ -432,21 +434,24 @@ async def get_student_profile(uid: str):
         raise HTTPException(status_code=500, detail="Database not configured")
     
     try:
-        response = supabase.table("students").select("*").eq("uid", uid).execute()
+        response = supabase.table("Database").select("*").eq("UID", uid).execute()
         
         if not response.data or len(response.data) == 0:
             raise HTTPException(status_code=404, detail="Student not found")
         
         student = response.data[0]
+        full_name = student.get("Name", "")
+        first_name = full_name.split()[0] if full_name else ""
+        
         return {
             "success": True,
-            "uid": student.get("uid"),
-            "firstName": student.get("first_name"),
-            "fullName": student.get("full_name"),
-            "number": student.get("number"),
-            "language": student.get("language", "english"),
-            "age": student.get("age"),
-            "allergy": student.get("allergy"),
+            "uid": student.get("UID"),
+            "firstName": first_name,
+            "fullName": full_name,
+            "number": student.get("Number"),
+            "language": student.get("Language", "english"),
+            "age": student.get("Age"),
+            "allergy": student.get("Allergy"),
             "message": "Profile retrieved successfully"
         }
     except HTTPException:
@@ -472,9 +477,9 @@ async def update_language(body: dict = Body(...)):
         raise HTTPException(status_code=500, detail="Database not configured")
     
     try:
-        response = supabase.table("students").update({
-            "language": language
-        }).eq("uid", uid).execute()
+        response = supabase.table("Database").update({
+            "Language": language
+        }).eq("UID", uid).execute()
         
         if not response.data or len(response.data) == 0:
             raise HTTPException(status_code=404, detail="Student not found")
@@ -502,20 +507,20 @@ async def update_profile(body: dict = Body(...)):
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     
-    # Build update dict with only provided fields
+    # Build update dict with only provided fields (using capitalized column names)
     update_data = {}
     if "age" in body and body["age"] is not None:
-        update_data["age"] = int(body["age"])
+        update_data["Age"] = int(body["age"])
     if "allergy" in body:
-        update_data["allergy"] = body["allergy"]
+        update_data["Allergy"] = body["allergy"]
     if "number" in body:
-        update_data["number"] = body["number"]
+        update_data["Number"] = body["number"]
     
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
     
     try:
-        response = supabase.table("students").update(update_data).eq("uid", uid).execute()
+        response = supabase.table("Database").update(update_data).eq("UID", uid).execute()
         
         if not response.data or len(response.data) == 0:
             raise HTTPException(status_code=404, detail="Student not found")
